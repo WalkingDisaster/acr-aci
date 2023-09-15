@@ -11,7 +11,7 @@
     },
     "functions": [],
     "variables": {
-        "identity": "[concat('aci-', parameters('environmentAffix'))]",
+        "identity": "[format('aci-{0}', parameters('environmentAffix'))]", // same as => "[concat('aci-', parameters('environmentAffix'))]",
         "location": "[resourceGroup().location]",
         "uniqueString": "[uniqueString(resourceGroup().id)]",
         "names": {

@@ -20,6 +20,7 @@ Set-Location -Path  ..
 
 # Interim Setup
 Set-Location -Path  ./2.interim-setup
+# Read the readme in this folder
 Write-Host $pwd
 . ./setup.ps1 -ResourceGroup $rg -AcrName $acrName -AciIdentity $aciIdentity
 Set-Location -Path  ..

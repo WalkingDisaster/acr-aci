@@ -1,4 +1,4 @@
 # To Do
 
-1. Add runbooks to the automation account
+1. Replace image in script with your image
 1. Populate parameters file under "3.services"

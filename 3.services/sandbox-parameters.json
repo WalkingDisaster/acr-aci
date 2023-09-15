@@ -1,0 +1,24 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "aciIdentityResourceId": {
+            "value": "/subscriptions/7b5f63fa-2f97-4179-9369-8c0ead4636f9/resourcegroups/TestAcrAci/providers/Microsoft.ManagedIdentity/userAssignedIdentities/aci-sandbox"
+        },
+        "environmentAffix": {
+            "value": "sandbox"
+        },
+        "imageName": {
+            "value": "acrsandboxz3bmde3aaytie.azurecr.io/samples/nginx"
+        },
+        "resourceSubnetName": {
+            "value": "ResourcesSubnet"
+        },
+        "subnetName": {
+            "value": "TestSubnet"
+        },
+        "vnetId": {
+            "value": "/subscriptions/7b5f63fa-2f97-4179-9369-8c0ead4636f9/resourceGroups/TestAcrAci/providers/Microsoft.Network/virtualnetworks/vnet-sandbox-z3bmde3aaytie"
+        }
+    }
+}

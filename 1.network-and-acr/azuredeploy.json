@@ -1,0 +1,192 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "environmentAffix": {
+            "type": "string",
+            "metadata": {
+                "description": "The affix to apply for the resource to denote the environment"
+            }
+        }
+    },
+    "functions": [],
+    "variables": {
+        "identity": "[concat('aci-', parameters('environmentAffix'))]",
+        "location": "[resourceGroup().location]",
+        "uniqueString": "[uniqueString(resourceGroup().id)]",
+        "names": {
+            "registry": "[concat('acr', parameters('environmentAffix'), variables('uniqueString'))]",
+            "subnets": {
+                "test": "TestSubnet",
+                "resources": "ResourcesSubnet"
+            },
+            "vnet": "[concat('vnet-', parameters('environmentAffix'), '-', variables('uniqueString'))]"
+        }
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Network/virtualnetworks",
+            "apiVersion": "2023-04-01",
+            "name": "[variables('names').vnet]",
+            "location": "[variables('location')]",
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "10.0.0.0/16"
+                    ]
+                },
+                "subnets": [
+                    {
+                        "name": "[variables('names').subnets.test]",
+                        "properties": {
+                            "addressPrefix": "10.0.0.0/24",
+                            "privateEndpointNetworkPolicies": "Disabled",
+                            "delegations": [
+                                {
+                                    "name": "acidelegationservice",
+                                    "properties": {
+                                        "serviceName": "Microsoft.ContainerInstance/containerGroups"
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "[variables('names').subnets.resources]",
+                        "properties": {
+                            "addressPrefix": "10.0.1.0/24",
+                            "privateEndpointNetworkPolicies": "Disabled",
+                            "delegations": []
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.ContainerRegistry/registries",
+            "apiVersion": "2023-07-01",
+            "name": "[variables('names').registry]",
+            "location": "[variables('location')]",
+            "sku": {
+                "name": "Standard"
+            },
+            "properties": {
+                "adminUserEnabled": true,
+                "policies": {
+                    "exportPolicy": {
+                        "status": "enabled"
+                    },
+                    "quarantinePolicy": {
+                        "status": "disabled"
+                    },
+                    "retentionPolicy": {
+                        "status": "disabled"
+                    },
+                    "trustPolicy": {
+                        "status": "disabled"
+                    }
+                },
+                "encryption": {
+                    "status": "disabled"
+                },
+                "dataEndpointEnabled": false,
+                "publicNetworkAccess": "Enabled",
+                "networkRuleBypassOptions": "AzureServices",
+                "zoneRedundancy": "Disabled"
+            },
+            "resources": [
+                {
+                    "type": "scopeMaps",
+                    "apiVersion": "2023-07-01",
+                    "name": "_repositories_admin",
+                    "properties": {
+                        "description": "Can perform all read, write and delete operations on the registry",
+                        "actions": [
+                            "repositories/*/metadata/read",
+                            "repositories/*/metadata/write",
+                            "repositories/*/content/read",
+                            "repositories/*/content/write",
+                            "repositories/*/content/delete"
+                        ]
+                    },
+                    "dependsOn": [
+                        "[resourceId('Microsoft.ContainerRegistry/registries', variables('names').registry)]"
+                    ]
+                },
+                {
+                    "type": "scopeMaps",
+                    "apiVersion": "2023-07-01",
+                    "name": "_repositories_pull",
+                    "properties": {
+                        "description": "Can pull any repository of the registry",
+                        "actions": [
+                            "repositories/*/content/read"
+                        ]
+                    },
+                    "dependsOn": [
+                        "[resourceId('Microsoft.ContainerRegistry/registries', variables('names').registry)]"
+                    ]
+                },
+                {
+                    "type": "scopeMaps",
+                    "apiVersion": "2023-07-01",
+                    "name": "_repositories_push",
+                    "properties": {
+                        "description": "Can push to any repository of the registry",
+                        "actions": [
+                            "repositories/*/content/read",
+                            "repositories/*/content/write"
+                        ]
+                    },
+                    "dependsOn": [
+                        "[resourceId('Microsoft.ContainerRegistry/registries', variables('names').registry)]"
+                    ]
+                },
+                {
+                    "type": "tokens",
+                    "apiVersion": "2023-07-01",
+                    "name": "AutoGroupCreation-Token",
+                    "properties": {
+                        "scopeMapId": "[resourceId('Microsoft.ContainerRegistry/registries/scopeMaps', variables('names').registry, '_repositories_pull')]",
+                        "credentials": {
+                            "passwords": []
+                        },
+                        "status": "enabled"
+                    },
+                    "dependsOn": [
+                        "[resourceId('Microsoft.ContainerRegistry/registries', variables('names').registry)]",
+                        "[resourceId('Microsoft.ContainerRegistry/registries/scopeMaps', variables('names').registry, '_repositories_pull')]"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+            "apiVersion": "2023-01-31",
+            "name": "[variables('identity')]",
+            "location": "[variables('location')]"
+        }
+    ],
+    "outputs": {
+        "acrName": {
+            "type": "string",
+            "value": "[variables('names').registry]"
+        },
+        "vnetId": {
+            "type": "string",
+            "value": "[resourceId('Microsoft.Network/virtualnetworks', variables('names').vnet)]"
+        },
+        "subnetName": {
+            "type": "string",
+            "value": "[variables('names').subnets.test]"
+        },
+        "resourceSubnetName": {
+            "type": "string",
+            "value": "[variables('names').subnets.resources]"
+        },
+        "aciIdentity": {
+            "type": "string",
+            "value": "[variables('identity')]"
+        }
+    }
+}

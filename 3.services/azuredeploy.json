@@ -1,0 +1,185 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "environmentAffix": {
+            "type": "string",
+            "metadata": {
+                "description": "The affix to apply for the resource to denote the environment"
+            }
+        },
+        "imageName": {
+            "type": "string",
+            "metadata": {
+                "description": "The fully qualified name of the docker image"
+            }
+        },
+        "vnetId": {
+            "type": "string",
+            "metadata": {
+                "description": "The resource id of the virtual network"
+            }
+        },
+        "subnetName": {
+            "type": "string",
+            "metadata": {
+                "description": ""
+            }
+        },
+        "resourceSubnetName": {
+            "type": "string",
+            "metadata": {
+                "description": ""
+            }
+        },
+        "aciIdentityResourceId": {
+            "type": "string",
+            "metadata": {
+                "description": ""
+            }
+        }
+    },
+    "functions": [],
+    "variables": {
+        "location": "[resourceGroup().location]",
+        "uniqueString": "[uniqueString(resourceGroup().id)]",
+        "names": {
+            "automationAccount": "[concat('automationAccount-', parameters('environmentAffix'), '-', variables('uniqueString'))]",
+            "automationEndpoint": "[concat('automationEndpoint-', parameters('environmentAffix'), '-', variables('uniqueString'))]",
+            "containerGroup": "[concat('containers-', parameters('environmentAffix'), '-', variables('uniqueString'))]",
+            "dnsZone": "privatelink.azure-automation.net"
+        }
+    },
+    "resources": [
+        {
+            "comments": "This automation account does not include runbooks. Those should be added through script or manually",
+            "type": "Microsoft.Automation/automationAccounts",
+            "apiVersion": "2022-08-08",
+            "name": "[variables('names').automationAccount]",
+            "location": "[variables('location')]",
+            "identity": {
+                "type": "SystemAssigned"
+            },
+            "properties": {
+                "sku": {
+                    "name": "Basic"
+                },
+                "publicNetworkAccess": false
+            }
+        },
+        {
+            "type": "Microsoft.Network/privateEndpoints",
+            "apiVersion": "2023-04-01",
+            "name": "[variables('names').automationEndpoint]",
+            "location": "[variables('location')]",
+            "properties": {
+                "subnet": {
+                    "id": "[format('{0}/subnets/{1}', parameters('vnetId'), parameters('resourceSubnetName'))]"
+                },
+                "privateLinkServiceConnections": [
+                    {
+                        "name": "[variables('names').automationEndpoint]",
+                        "properties": {
+                            "privateLinkServiceId": "[resourceId('Microsoft.Automation/automationAccounts', variables('names').automationAccount)]",
+                            "groupIds": [
+                                "DSCAndHybridWorker"
+                            ]
+                        }
+                    }
+                ]
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Automation/automationAccounts', variables('names').automationAccount)]"
+            ]
+        },
+        {
+            "type": "Microsoft.Network/privateDnsZones",
+            "apiVersion": "2018-09-01",
+            "name": "[variables('names').dnsZone]",
+            "location": "global",
+            "properties": {}
+        },
+        {
+            "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+            "apiVersion": "2018-09-01",
+            "name": "[format('{0}/{1}', variables('names').dnsZone, format('{0}-link', variables('names').dnsZone))]",
+            "location": "global",
+            "properties": {
+                "registrationEnabled": false,
+                "virtualNetwork": {
+                    "id": "[parameters('vnetId')]"
+                }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('names').dnsZone)]"
+            ]
+        },
+        {
+            "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+            "apiVersion": "2021-05-01",
+            "name": "[format('{0}/mydnsgroupname', variables('names').automationEndpoint)]",
+            "properties": {
+                "privateDnsZoneConfigs": [
+                    // {
+                    //     "name": "config1",
+                    //     "properties": {
+                    //         "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', variables('names').dnsZone)]"
+                    //     }
+                    // }
+                ]
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/privateEndpoints', variables('names').automationEndpoint)]",
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('names').dnsZone)]"
+            ]
+        },
+        {
+            "type": "Microsoft.ContainerInstance/containerGroups",
+            "apiVersion": "2023-05-01",
+            "name": "[variables('names').containerGroup]",
+            "location": "[variables('location')]",
+            "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                    "[parameters('aciIdentityResourceId')]": {}
+                }
+            },
+            "properties": {
+                "subnetIds": [
+                    {
+                        "id": "[format('{0}/subnets/{1}', parameters('vnetId'), parameters('subnetName'))]"
+                    }
+                ],
+                "imageRegistryCredentials": [
+                    {
+                        "identity": "[parameters('aciIdentityResourceId')]",
+                        "server": "acrsandboxz3bmde3aaytie.azurecr.io"
+                    }
+                ],
+                "osType": "Linux",
+                "restartPolicy": "Never",
+                "containers": [
+                    {
+                        "name": "[variables('names').containerGroup]",
+                        "properties": {
+                            "image": "[parameters('imageName')]",
+                            "ports": [
+                                {
+                                    "port": 80,
+                                    "protocol": "TCP"
+                                }
+                            ],
+                            "resources": {
+                                "requests": {
+                                    "cpu": 1,
+                                    "memoryInGB": 2
+                                }
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    ],
+    "outputs": {}
+}

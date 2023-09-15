@@ -108,6 +108,7 @@
             ]
         },
         {
+            "comments": "Remove this if they're managing the DNS",
             "type": "Microsoft.Network/privateDnsZones",
             "apiVersion": "2018-09-01",
             "name": "[parameters('automationDnsZone')]",
@@ -115,6 +116,7 @@
             "properties": {}
         },
         {
+            "comments": "Remove this if they're managing the DNS",
             "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
             "apiVersion": "2018-09-01",
             "name": "[format('{0}/{1}', parameters('automationDnsZone'), format('{0}-link', parameters('automationDnsZone')))]",
@@ -130,6 +132,7 @@
             ]
         },
         {
+            "comments": "Remove this if they're managing the DNS",
             "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
             "apiVersion": "2021-05-01",
             "name": "[format('{0}/mydnsgroupname', variables('names').automationEndpoint)]",

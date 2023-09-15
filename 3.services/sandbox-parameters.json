@@ -2,6 +2,9 @@
     "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
+        "acrServer": {
+            "value": "acrsandboxz3bmde3aaytie.azurecr.io"
+        },
         "aciIdentityResourceId": {
             "value": "/subscriptions/7b5f63fa-2f97-4179-9369-8c0ead4636f9/resourcegroups/TestAcrAci/providers/Microsoft.ManagedIdentity/userAssignedIdentities/aci-sandbox"
         },

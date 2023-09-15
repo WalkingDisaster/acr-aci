@@ -2,6 +2,19 @@
     "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
+        "acrServer": {
+            "type": "string",
+            "metadata": {
+                "description": ""
+            }
+        },
+        "automationDnsZone": {
+            "type": "string",
+            "defaultValue": "privatelink.azure-automation.net",
+            "metadata": {
+                "description": ""
+            }
+        },
         "environmentAffix": {
             "type": "string",
             "metadata": {
@@ -47,10 +60,11 @@
             "automationAccount": "[concat('automationAccount-', parameters('environmentAffix'), '-', variables('uniqueString'))]",
             "automationEndpoint": "[concat('automationEndpoint-', parameters('environmentAffix'), '-', variables('uniqueString'))]",
             "containerGroup": "[concat('containers-', parameters('environmentAffix'), '-', variables('uniqueString'))]",
-            "dnsZone": "privatelink.azure-automation.net"
+            "containerEndpoint": "[concat('containersEndpoint-', parameters('environmentAffix'), '-', variables('uniqueString'))]"
         }
     },
     "resources": [
+        // Azure Automation Account
         {
             "comments": "This automation account does not include runbooks. Those should be added through script or manually",
             "type": "Microsoft.Automation/automationAccounts",
@@ -95,14 +109,14 @@
         {
             "type": "Microsoft.Network/privateDnsZones",
             "apiVersion": "2018-09-01",
-            "name": "[variables('names').dnsZone]",
+            "name": "[parameters('automationDnsZone')]",
             "location": "global",
             "properties": {}
         },
         {
             "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
             "apiVersion": "2018-09-01",
-            "name": "[format('{0}/{1}', variables('names').dnsZone, format('{0}-link', variables('names').dnsZone))]",
+            "name": "[format('{0}/{1}', parameters('automationDnsZone'), format('{0}-link', parameters('automationDnsZone')))]",
             "location": "global",
             "properties": {
                 "registrationEnabled": false,
@@ -111,7 +125,7 @@
                 }
             },
             "dependsOn": [
-                "[resourceId('Microsoft.Network/privateDnsZones', variables('names').dnsZone)]"
+                "[resourceId('Microsoft.Network/privateDnsZones', parameters('automationDnsZone'))]"
             ]
         },
         {
@@ -123,16 +137,18 @@
                     {
                         "name": "config1",
                         "properties": {
-                            "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', variables('names').dnsZone)]"
+                            "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', parameters('automationDnsZone'))]"
                         }
                     }
                 ]
             },
             "dependsOn": [
                 "[resourceId('Microsoft.Network/privateEndpoints', variables('names').automationEndpoint)]",
-                "[resourceId('Microsoft.Network/privateDnsZones', variables('names').dnsZone)]"
+                "[resourceId('Microsoft.Network/privateDnsZones', parameters('automationDnsZone'))]"
             ]
         },
+
+        // Azure Container Instance
         {
             "type": "Microsoft.ContainerInstance/containerGroups",
             "apiVersion": "2023-05-01",
@@ -153,7 +169,7 @@
                 "imageRegistryCredentials": [
                     {
                         "identity": "[parameters('aciIdentityResourceId')]",
-                        "server": "acrsandboxz3bmde3aaytie.azurecr.io"
+                        "server": "[parameters('acrServer')]"
                     }
                 ],
                 "osType": "Linux",

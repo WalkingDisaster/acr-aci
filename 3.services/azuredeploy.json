@@ -120,12 +120,12 @@
             "name": "[format('{0}/mydnsgroupname', variables('names').automationEndpoint)]",
             "properties": {
                 "privateDnsZoneConfigs": [
-                    // {
-                    //     "name": "config1",
-                    //     "properties": {
-                    //         "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', variables('names').dnsZone)]"
-                    //     }
-                    // }
+                    {
+                        "name": "config1",
+                        "properties": {
+                            "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', variables('names').dnsZone)]"
+                        }
+                    }
                 ]
             },
             "dependsOn": [

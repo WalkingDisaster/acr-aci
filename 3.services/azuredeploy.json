@@ -96,6 +96,7 @@
                         "properties": {
                             "privateLinkServiceId": "[resourceId('Microsoft.Automation/automationAccounts', variables('names').automationAccount)]",
                             "groupIds": [
+                                "Webhook",
                                 "DSCAndHybridWorker"
                             ]
                         }
